@@ -125,10 +125,19 @@ const TYPES = {
   play:   { name: '玩耍' },
   out:    { name: '外出' },
 };
-const DB_KEY = 'baby_events';
+const DB_URL = '/api/events';
 
-function loadDB() { return JSON.parse(localStorage.getItem(DB_KEY) || '[]'); }
-function saveDB(db) { localStorage.setItem(DB_KEY, JSON.stringify(db)); }
+async function loadDB() {
+  const res = await fetch(DB_URL, { cache: 'no-store' });
+  return await res.json();
+}
+async function addToDB(ev) {
+  const res = await fetch(DB_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(ev) });
+  if (!res.ok) throw new Error('save failed');
+}
+async function delFromDB(id) {
+  await fetch(DB_URL + '/' + id, { method: 'DELETE' });
+}
 
 function pad(n) { return String(n).padStart(2, '0'); }
 function toLocalInput(d) {
@@ -176,7 +185,7 @@ function onWetChange() {
     document.getElementById('f-wet').value === '大便' ? 'block' : 'none';
 }
 
-function saveEvent() {
+async function saveEvent() {
   const start = document.getElementById('f-start').value;
   const end = document.getElementById('f-end').value;
   if (!start || !end) { alert('请填写开始和结束时间'); return; }
@@ -191,11 +200,14 @@ function saveEvent() {
     ev.wet = document.getElementById('f-wet').value;
     if (ev.wet === '大便') ev.stool = document.getElementById('f-stool').value;
   }
-  const db = loadDB();
-  db.push(ev);
-  saveDB(db);
-  document.getElementById('save-tip').textContent = '✅ 已保存';
-  setTimeout(() => showPage('page-main'), 600);
+  document.getElementById('save-tip').textContent = '保存中…';
+  try {
+    await addToDB(ev);
+    document.getElementById('save-tip').textContent = '✅ 已保存';
+    setTimeout(() => showPage('page-main'), 600);
+  } catch (err) {
+    document.getElementById('save-tip').textContent = '❌ 保存失败，请重试';
+  }
 }
 
 // ---- 日历 ----
@@ -203,10 +215,10 @@ function calMove(delta) {
   calBase = new Date(calBase.getFullYear(), calBase.getMonth() + delta, 1);
   renderCal();
 }
-function renderCal() {
+async function renderCal() {
   const y = calBase.getFullYear(), m = calBase.getMonth();
   document.getElementById('cal-title').textContent = y + ' 年 ' + (m + 1) + ' 月';
-  const db = loadDB();
+  const db = await loadDB();
   const eventDays = {};
   db.forEach(e => { const k = dayKey(e.start); eventDays[k] = (eventDays[k] || 0) + 1; });
   const today = dayKey(toLocalInput(new Date()));
@@ -223,10 +235,13 @@ function renderCal() {
   }
   document.getElementById('cal-grid').innerHTML = html;
 }
-function openDay(k) {
+async function openDay(k) {
   currentDay = k;
   document.getElementById('day-title').textContent = k;
-  const db = loadDB().filter(e => dayKey(e.start) === k).sort((a, b) => a.start.localeCompare(b.start));
+  document.getElementById('day-summary').innerHTML = '<div class="summary-row"><span>加载中…</span></div>';
+  document.getElementById('day-list').innerHTML = '';
+  showPage('page-day');
+  const db = (await loadDB()).filter(e => dayKey(e.start) === k).sort((a, b) => a.start.localeCompare(b.start));
   // 汇总
   const counts = {}, milkTotal = { n: 0, ml: 0 };
   db.forEach(e => {
@@ -249,11 +264,10 @@ function openDay(k) {
       <span>${fmt(e.start).slice(11)}</span><span>${fmt(e.end).slice(11)}</span>
       <span class="type">${TYPES[e.type].name}</span></div>`).join('') ||
     '<div class="summary-row"><span>暂无事件</span></div>';
-  showPage('page-day');
 }
 
-function openDetail(id) {
-  const ev = loadDB().find(e => e.id === id);
+async function openDetail(id) {
+  const ev = (await loadDB()).find(e => e.id === id);
   if (!ev) return;
   currentEventId = id;
   document.getElementById('detail-title').textContent = TYPES[ev.type].name;
@@ -270,12 +284,10 @@ function openDetail(id) {
   showPage('page-detail');
 }
 
-function deleteEvent() {
+async function deleteEvent() {
   if (!confirm('确定删除这条记录吗？')) return;
-  saveDB(loadDB().filter(e => e.id !== currentEventId));
-  showPage('page-day');
-  if (currentDay) openDay(currentDay);
-  showPage('page-day');
+  await delFromDB(currentEventId);
+  if (currentDay) await openDay(currentDay);
 }
 
 renderCal();

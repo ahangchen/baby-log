@@ -49,7 +49,7 @@ h3 { margin: 16px 0 10px; font-size: 16px; }
 <!-- 主界面 -->
 <div id="page-main" class="page active">
   <div class="topbar">
-    <button class="review-btn" onclick="showPage('page-calendar')">📖 事件回顾</button>
+    <button class="review-btn" onclick="showPage('page-calendar');renderCal();renderMilkChart()">📖 事件回顾</button>
     <div style="font-size:18px;font-weight:bold">带娃记录</div>
     <div style="width:70px"></div>
   </div>
@@ -96,6 +96,8 @@ h3 { margin: 16px 0 10px; font-size: 16px; }
     <button onclick="calMove(1)">›</button>
   </div>
   <div class="cal-grid" id="cal-grid"></div>
+  <h3>最近 7 天总奶量 (ml)</h3>
+  <div id="milk-chart"></div>
 </div>
 
 <!-- 日汇总 -->
@@ -233,6 +235,7 @@ async function saveEvent() {
 function calMove(delta) {
   calBase = new Date(calBase.getFullYear(), calBase.getMonth() + delta, 1);
   renderCal();
+  renderMilkChart();
 }
 async function renderCal() {
   const y = calBase.getFullYear(), m = calBase.getMonth();
@@ -254,7 +257,48 @@ async function renderCal() {
   }
   document.getElementById('cal-grid').innerHTML = html;
 }
-async function openDay(k) {
+async async function renderMilkChart() {
+  const db = await loadDB();
+  const totals = {};
+  db.forEach(e => {
+    if (e.type === 'milk') {
+      const k = dayKey(e.start);
+      totals[k] = (totals[k] || 0) + (e.amount || 0);
+    }
+  });
+  const days = [];
+  const now = new Date();
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date(now.getFullYear(), now.getMonth(), now.getDate() - i);
+    days.push({
+      key: d.getFullYear() + '-' + pad(d.getMonth()+1) + '-' + pad(d.getDate()),
+      label: (d.getMonth()+1) + '/' + d.getDate(),
+    });
+  }
+  const vals = days.map(d => totals[d.key] || 0);
+  const W = 440, H = 220, PAD_L = 40, PAD_B = 30, PAD_T = 24, PAD_R = 10;
+  const maxV = Math.max(...vals, 100);
+  const step = 100;
+  const yMax = Math.ceil(maxV / step) * step;
+  const x = i => PAD_L + i * (W - PAD_L - PAD_R) / (days.length - 1);
+  const y = v => PAD_T + (1 - v / yMax) * (H - PAD_T - PAD_B);
+  let svg = `<svg viewBox="0 0 ${W} ${H}" style="width:100%;background:#fff;border-radius:12px">`;
+  for (let v = 0; v <= yMax; v += step) {
+    svg += `<line x1="${PAD_L}" y1="${y(v)}" x2="${W-PAD_R}" y2="${y(v)}" stroke="#eee"/>
+      <text x="${PAD_L-6}" y="${y(v)+4}" font-size="11" fill="#999" text-anchor="end">${v}</text>`;
+  }
+  const pts = vals.map((v, i) => `${x(i)},${y(v)}`).join(' ');
+  svg += `<polyline points="${pts}" fill="none" stroke="#4a90e2" stroke-width="2.5"/>`;
+  days.forEach((d, i) => {
+    svg += `<circle cx="${x(i)}" cy="${y(vals[i])}" r="4" fill="#4a90e2"/>
+      <text x="${x(i)}" y="${y(vals[i])-10}" font-size="11" fill="#4a90e2" font-weight="bold" text-anchor="middle">${vals[i]}</text>
+      <text x="${x(i)}" y="${H-10}" font-size="11" fill="#666" text-anchor="middle">${d.label}</text>`;
+  });
+  svg += '</svg>';
+  document.getElementById('milk-chart').innerHTML = svg;
+}
+
+function openDay(k) {
   currentDay = k;
   document.getElementById('day-title').textContent = k;
   document.getElementById('day-summary').innerHTML = '<div class="summary-row"><span>加载中…</span></div>';
@@ -371,6 +415,7 @@ async function deleteEvent() {
   if (currentDay) await openDay(currentDay);
 }
 renderCal();
+renderMilkChart();
 </script>
 </body>
 </html>

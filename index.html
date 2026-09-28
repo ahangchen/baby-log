@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>带娃记录</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+body { font-family: -apple-system, "PingFang SC", sans-serif; background: #f5f6fa; min-height: 100vh; }
+.page { display: none; padding: 16px; padding-bottom: 40px; max-width: 480px; margin: 0 auto; }
+.page.active { display: block; }
+h2 { text-align: center; margin-bottom: 16px; font-size: 20px; }
+.topbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+.review-btn { background: #fff; border: 1px solid #ddd; border-radius: 10px; padding: 8px 12px; font-size: 14px; cursor: pointer; }
+.back { background: none; border: none; font-size: 16px; color: #4a6cf7; cursor: pointer; padding: 6px; }
+.btn-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.ev-btn { border: none; border-radius: 16px; padding: 26px 0; font-size: 18px; color: #fff; cursor: pointer; }
+.ev-milk { background: #4a90e2; } .ev-diaper { background: #f5a623; }
+.ev-sleep { background: #9013fe; } .ev-bath { background: #50e3c2; }
+.ev-play { background: #e0427f; } .ev-out { background: #7ed321; }
+.form-item { margin-bottom: 16px; }
+.form-item label { display: block; font-size: 14px; color: #666; margin-bottom: 6px; }
+.form-item input, .form-item select { width: 100%; padding: 12px; font-size: 16px; border: 1px solid #ddd; border-radius: 10px; background: #fff; }
+.save-btn { width: 100%; padding: 14px; border: none; border-radius: 12px; background: #4a6cf7; color: #fff; font-size: 17px; margin-top: 8px; cursor: pointer; }
+.tip { text-align: center; color: #34a853; font-size: 14px; height: 20px; margin-top: 10px; }
+.cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; }
+.cal-grid .dow { text-align: center; font-size: 12px; color: #999; padding: 4px 0; }
+.cal-cell { aspect-ratio: 1; display: flex; align-items: center; justify-content: center; background: #fff; border-radius: 8px; font-size: 14px; cursor: pointer; }
+.cal-cell.today { border: 2px solid #4a6cf7; }
+.cal-cell.has-events { background: #4a6cf7; color: #fff; font-weight: bold; }
+.cal-cell.empty { background: transparent; cursor: default; }
+.cal-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+.cal-head button { border: none; background: #fff; border-radius: 8px; padding: 8px 14px; font-size: 16px; cursor: pointer; }
+.summary-row { display: flex; justify-content: space-between; background: #fff; border-radius: 10px; padding: 12px 14px; margin-bottom: 8px; font-size: 15px; }
+.summary-row b { color: #4a6cf7; }
+.ev-row { display: grid; grid-template-columns: 1fr 1fr 1.2fr; background: #fff; border-radius: 10px; padding: 12px 10px; margin-bottom: 8px; font-size: 13px; cursor: pointer; align-items: center; }
+.ev-row .type { font-weight: bold; color: #4a6cf7; }
+.detail-item { background: #fff; border-radius: 10px; padding: 12px 14px; margin-bottom: 8px; display: flex; justify-content: space-between; font-size: 15px; }
+.detail-item span:first-child { color: #888; }
+h3 { margin: 16px 0 10px; font-size: 16px; }
+</style>
+</head>
+<body>
+
+<!-- 主界面 -->
+<div id="page-main" class="page active">
+  <div class="topbar">
+    <button class="review-btn" onclick="showPage('page-calendar')">📖 事件回顾</button>
+    <div style="font-size:18px;font-weight:bold">带娃记录</div>
+    <div style="width:70px"></div>
+  </div>
+  <div class="btn-grid">
+    <button class="ev-btn ev-milk" onclick="openForm('milk')">🍼 喝奶</button>
+    <button class="ev-btn ev-diaper" onclick="openForm('diaper')">🧷 换尿布</button>
+    <button class="ev-btn ev-sleep" onclick="openForm('sleep')">😴 睡觉</button>
+    <button class="ev-btn ev-bath" onclick="openForm('bath')">🛁 洗澡</button>
+    <button class="ev-btn ev-play" onclick="openForm('play')">🧸 玩耍</button>
+    <button class="ev-btn ev-out" onclick="openForm('out')">🚗 外出</button>
+  </div>
+</div>
+
+<!-- 事件详情表单 -->
+<div id="page-form" class="page">
+  <div class="topbar">
+    <button class="back" onclick="showPage('page-main')">‹ 返回</button>
+    <h2 id="form-title">事件</h2>
+    <div style="width:50px"></div>
+  </div>
+  <div class="form-item">
+    <label>开始时间</label>
+    <input type="datetime-local" id="f-start">
+  </div>
+  <div class="form-item">
+    <label>结束时间</label>
+    <input type="datetime-local" id="f-end">
+  </div>
+  <div id="f-extra"></div>
+  <button class="save-btn" onclick="saveEvent()">保存</button>
+  <div class="tip" id="save-tip"></div>
+</div>
+
+<!-- 日历 -->
+<div id="page-calendar" class="page">
+  <div class="topbar">
+    <button class="back" onclick="showPage('page-main')">‹ 返回</button>
+    <h2>事件回顾</h2>
+    <div style="width:50px"></div>
+  </div>
+  <div class="cal-head">
+    <button onclick="calMove(-1)">‹</button>
+    <div id="cal-title" style="font-size:17px;font-weight:bold"></div>
+    <button onclick="calMove(1)">›</button>
+  </div>
+  <div class="cal-grid" id="cal-grid"></div>
+</div>
+
+<!-- 日汇总 -->
+<div id="page-day" class="page">
+  <div class="topbar">
+    <button class="back" onclick="showPage('page-calendar')">‹ 返回</button>
+    <h2 id="day-title"></h2>
+    <div style="width:50px"></div>
+  </div>
+  <div id="day-summary"></div>
+  <h3>事件列表</h3>
+  <div id="day-list"></div>
+</div>
+
+<!-- 事件详情 -->
+<div id="page-detail" class="page">
+  <div class="topbar">
+    <button class="back" onclick="showPage('page-day')">‹ 返回</button>
+    <h2 id="detail-title"></h2>
+    <button class="back" style="color:#e0427f" onclick="deleteEvent()">删除</button>
+  </div>
+  <div id="detail-body"></div>
+</div>
+
+<script>
+const TYPES = {
+  milk:   { name: '喝奶' },
+  diaper: { name: '换尿布' },
+  sleep:  { name: '睡觉' },
+  bath:   { name: '洗澡' },
+  play:   { name: '玩耍' },
+  out:    { name: '外出' },
+};
+const DB_KEY = 'baby_events';
+
+function loadDB() { return JSON.parse(localStorage.getItem(DB_KEY) || '[]'); }
+function saveDB(db) { localStorage.setItem(DB_KEY, JSON.stringify(db)); }
+
+function pad(n) { return String(n).padStart(2, '0'); }
+function toLocalInput(d) {
+  return d.getFullYear() + '-' + pad(d.getMonth()+1) + '-' + pad(d.getDate()) + 'T' + pad(d.getHours()) + ':' + pad(d.getMinutes());
+}
+function fmt(dt) { return (dt || '').replace('T', ' '); }
+function dayKey(s) { return (s || '').slice(0, 10); }
+
+let currentType = null;
+let calBase = new Date();
+let currentDay = null;
+let currentEventId = null;
+
+function showPage(id) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+function openForm(type) {
+  currentType = type;
+  const now = new Date();
+  const start = new Date(now.getTime() - 10 * 60 * 1000);
+  document.getElementById('form-title').textContent = TYPES[type].name;
+  document.getElementById('f-start').value = toLocalInput(start);
+  document.getElementById('f-end').value = toLocalInput(now);
+  document.getElementById('save-tip').textContent = '';
+  let extra = '';
+  if (type === 'milk') {
+    extra = `<div class="form-item"><label>喝奶量 (ml)</label><input type="number" id="f-amount" inputmode="decimal" placeholder="例如 120"></div>`;
+  } else if (type === 'play') {
+    extra = `<div class="form-item"><label>运动类型</label><select id="f-playtype">
+      <option>大运动</option><option>玩玩具</option><option>练抬头</option></select></div>`;
+  } else if (type === 'diaper') {
+    extra = `<div class="form-item"><label>尿包内容</label><select id="f-wet" onchange="onWetChange()">
+      <option>小便</option><option>大便</option></select></div>
+      <div class="form-item" id="f-stool-wrap" style="display:none"><label>大便状态</label><select id="f-stool">
+      <option>黄</option><option>绿</option><option>黄绿</option><option>深绿</option></select></div>`;
+  }
+  document.getElementById('f-extra').innerHTML = extra;
+  showPage('page-form');
+}
+
+function onWetChange() {
+  document.getElementById('f-stool-wrap').style.display =
+    document.getElementById('f-wet').value === '大便' ? 'block' : 'none';
+}
+
+function saveEvent() {
+  const start = document.getElementById('f-start').value;
+  const end = document.getElementById('f-end').value;
+  if (!start || !end) { alert('请填写开始和结束时间'); return; }
+  const ev = { id: Date.now(), type: currentType, start, end };
+  if (currentType === 'milk') {
+    const v = document.getElementById('f-amount').value;
+    if (!v) { alert('请填写喝奶量'); return; }
+    ev.amount = Number(v);
+  } else if (currentType === 'play') {
+    ev.playType = document.getElementById('f-playtype').value;
+  } else if (currentType === 'diaper') {
+    ev.wet = document.getElementById('f-wet').value;
+    if (ev.wet === '大便') ev.stool = document.getElementById('f-stool').value;
+  }
+  const db = loadDB();
+  db.push(ev);
+  saveDB(db);
+  document.getElementById('save-tip').textContent = '✅ 已保存';
+  setTimeout(() => showPage('page-main'), 600);
+}
+
+// ---- 日历 ----
+function calMove(delta) {
+  calBase = new Date(calBase.getFullYear(), calBase.getMonth() + delta, 1);
+  renderCal();
+}
+function renderCal() {
+  const y = calBase.getFullYear(), m = calBase.getMonth();
+  document.getElementById('cal-title').textContent = y + ' 年 ' + (m + 1) + ' 月';
+  const db = loadDB();
+  const eventDays = {};
+  db.forEach(e => { const k = dayKey(e.start); eventDays[k] = (eventDays[k] || 0) + 1; });
+  const today = dayKey(toLocalInput(new Date()));
+  const first = new Date(y, m, 1);
+  const days = new Date(y, m + 1, 0).getDate();
+  let html = ['日','一','二','三','四','五','六'].map(d => `<div class="dow">${d}</div>`).join('');
+  for (let i = 0; i < first.getDay(); i++) html += '<div class="cal-cell empty"></div>';
+  for (let d = 1; d <= days; d++) {
+    const k = y + '-' + pad(m + 1) + '-' + pad(d);
+    let cls = 'cal-cell';
+    if (k === today) cls += ' today';
+    if (eventDays[k]) cls += ' has-events';
+    html += `<div class="${cls}" onclick="openDay('${k}')">${d}</div>`;
+  }
+  document.getElementById('cal-grid').innerHTML = html;
+}
+function openDay(k) {
+  currentDay = k;
+  document.getElementById('day-title').textContent = k;
+  const db = loadDB().filter(e => dayKey(e.start) === k).sort((a, b) => a.start.localeCompare(b.start));
+  // 汇总
+  const counts = {}, milkTotal = { n: 0, ml: 0 };
+  db.forEach(e => {
+    counts[e.type] = (counts[e.type] || 0) + 1;
+    if (e.type === 'milk') { milkTotal.n++; milkTotal.ml += e.amount || 0; }
+  });
+  let sum = '';
+  const order = Object.keys(TYPES);
+  order.forEach(t => {
+    if (counts[t]) {
+      let txt = counts[t] + ' 次';
+      if (t === 'milk') txt += ' / 总量 ' + milkTotal.ml + ' ml';
+      sum += `<div class="summary-row"><span>${TYPES[t].name}</span><b>${txt}</b></div>`;
+    }
+  });
+  document.getElementById('day-summary').innerHTML = sum || '<div class="summary-row"><span>当天没有记录</span></div>';
+  // 列表
+  document.getElementById('day-list').innerHTML = db.map(e =>
+    `<div class="ev-row" onclick="openDetail(${e.id})">
+      <span>${fmt(e.start).slice(11)}</span><span>${fmt(e.end).slice(11)}</span>
+      <span class="type">${TYPES[e.type].name}</span></div>`).join('') ||
+    '<div class="summary-row"><span>暂无事件</span></div>';
+  showPage('page-day');
+}
+
+function openDetail(id) {
+  const ev = loadDB().find(e => e.id === id);
+  if (!ev) return;
+  currentEventId = id;
+  document.getElementById('detail-title').textContent = TYPES[ev.type].name;
+  let rows = `<div class="detail-item"><span>事件类型</span><span>${TYPES[ev.type].name}</span></div>
+    <div class="detail-item"><span>开始时间</span><span>${fmt(ev.start)}</span></div>
+    <div class="detail-item"><span>结束时间</span><span>${fmt(ev.end)}</span></div>`;
+  if (ev.type === 'milk') rows += `<div class="detail-item"><span>喝奶量</span><span>${ev.amount} ml</span></div>`;
+  if (ev.type === 'play') rows += `<div class="detail-item"><span>运动类型</span><span>${ev.playType}</span></div>`;
+  if (ev.type === 'diaper') {
+    rows += `<div class="detail-item"><span>尿包内容</span><span>${ev.wet}</span></div>`;
+    if (ev.stool) rows += `<div class="detail-item"><span>大便状态</span><span>${ev.stool}</span></div>`;
+  }
+  document.getElementById('detail-body').innerHTML = rows;
+  showPage('page-detail');
+}
+
+function deleteEvent() {
+  if (!confirm('确定删除这条记录吗？')) return;
+  saveDB(loadDB().filter(e => e.id !== currentEventId));
+  showPage('page-day');
+  if (currentDay) openDay(currentDay);
+  showPage('page-day');
+}
+
+renderCal();
+</script>
+</body>
+</html>

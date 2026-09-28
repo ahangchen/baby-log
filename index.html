@@ -167,7 +167,7 @@ function openForm(type) {
   document.getElementById('save-tip').textContent = '';
   let extra = '';
   if (type === 'milk') {
-    extra = `<div class="form-item"><label>喝奶量 (ml)</label><input type="number" id="f-amount" inputmode="decimal" placeholder="例如 120"></div>`;
+    extra = `<div class="form-item"><label>喝奶量 (ml)</label><input type="number" id="f-amount" inputmode="decimal" value="120" placeholder="例如 120"></div>`;
   } else if (type === 'play') {
     extra = `<div class="form-item"><label>运动类型</label><select id="f-playtype">
       <option>大运动</option><option>玩玩具</option><option>练抬头</option></select></div>`;

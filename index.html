@@ -168,7 +168,8 @@ function openForm(type) {
   document.getElementById('save-tip').textContent = '';
   let extra = '';
   if (type === 'milk') {
-    extra = `<div class="form-item"><label>喝奶量 (ml)</label><input type="number" id="f-amount" inputmode="decimal" value="120" placeholder="例如 120"></div>`;
+    extra = `<div class="form-item"><label>喝奶量 (ml)</label><input type="number" id="f-amount" inputmode="decimal" value="120" placeholder="例如 120"></div>
+      <div class="form-item"><label><input type="checkbox" id="f-also-diaper" style="width:auto;margin-right:8px;transform:scale(1.2)">同时记录换尿包（小便，时间：喝奶前 5 分钟）</label></div>`;
   } else if (type === 'play') {
     extra = `<div class="form-item"><label>运动类型</label><select id="f-playtype">
       <option>大运动</option><option>玩玩具</option><option>练抬头</option></select></div>`;
@@ -205,6 +206,18 @@ async function saveEvent() {
   document.getElementById('save-tip').textContent = '保存中…';
   try {
     await addToDB(ev);
+    const alsoDiaper = document.getElementById('f-also-diaper');
+    if (currentType === 'milk' && alsoDiaper && alsoDiaper.checked) {
+      const dStart = new Date(start);
+      dStart.setMinutes(dStart.getMinutes() - 5);
+      await addToDB({
+        id: Date.now() + 1,
+        type: 'diaper',
+        start: toLocalInput(dStart),
+        end: start,
+        wet: '小便',
+      });
+    }
     document.getElementById('save-tip').textContent = '✅ 已保存';
     setTimeout(() => showPage('page-main'), 600);
   } catch (err) {

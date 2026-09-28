@@ -160,7 +160,8 @@ function showPage(id) {
 function openForm(type) {
   currentType = type;
   const now = new Date();
-  const start = new Date(now.getTime() - 10 * 60 * 1000);
+  const offsetMin = type === 'sleep' ? 60 : 10;
+  const start = new Date(now.getTime() - offsetMin * 60 * 1000);
   document.getElementById('form-title').textContent = TYPES[type].name;
   document.getElementById('f-start').value = toLocalInput(start);
   document.getElementById('f-end').value = toLocalInput(now);

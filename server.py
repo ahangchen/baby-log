@@ -57,6 +57,28 @@ class Handler(SimpleHTTPRequestHandler):
             save_events(events)
         return self._json(200, {'ok': True, 'id': event.get('id')})
 
+    def do_PUT(self):
+        if not self.path.startswith('/api/events/'):
+            return self._json(404, {'error': 'not found'})
+        try:
+            eid = int(self.path.rsplit('/', 1)[1])
+        except ValueError:
+            return self._json(400, {'error': 'bad id'})
+        length = int(self.headers.get('Content-Length', 0))
+        try:
+            data = json.loads(self.rfile.read(length).decode('utf-8'))
+        except Exception:
+            return self._json(400, {'error': 'bad json'})
+        data.pop('id', None)
+        with LOCK:
+            events = load_events()
+            for i, e in enumerate(events):
+                if e.get('id') == eid:
+                    events[i].update(data)
+                    save_events(events)
+                    return self._json(200, {'ok': True})
+        return self._json(404, {'error': 'event not found'})
+
     def do_DELETE(self):
         if self.path.startswith('/api/events/'):
             try:

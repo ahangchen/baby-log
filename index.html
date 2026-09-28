@@ -150,6 +150,7 @@ let currentType = null;
 let calBase = new Date();
 let currentDay = null;
 let currentEventId = null;
+let currentEvent = null;
 
 function showPage(id) {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
@@ -270,6 +271,7 @@ async function openDetail(id) {
   const ev = (await loadDB()).find(e => e.id === id);
   if (!ev) return;
   currentEventId = id;
+  currentEvent = ev;
   document.getElementById('detail-title').textContent = TYPES[ev.type].name;
   let rows = `<div class="detail-item"><span>事件类型</span><span>${TYPES[ev.type].name}</span></div>
     <div class="detail-item"><span>开始时间</span><span>${fmt(ev.start)}</span></div>
@@ -280,8 +282,62 @@ async function openDetail(id) {
     rows += `<div class="detail-item"><span>尿包内容</span><span>${ev.wet}</span></div>`;
     if (ev.stool) rows += `<div class="detail-item"><span>大便状态</span><span>${ev.stool}</span></div>`;
   }
+  rows += `<button class="save-btn" style="background:#888" onclick="editEvent()">✏️ 编辑</button>`;
   document.getElementById('detail-body').innerHTML = rows;
   showPage('page-detail');
+}
+
+function opts(list, sel) {
+  return list.map(v => `<option ${v === sel ? 'selected' : ''}>${v}</option>`).join('');
+}
+
+function editEvent() {
+  const ev = currentEvent;
+  let rows = `<div class="form-item"><label>开始时间</label><input type="datetime-local" id="e-start" value="${ev.start}"></div>
+    <div class="form-item"><label>结束时间</label><input type="datetime-local" id="e-end" value="${ev.end}"></div>`;
+  if (ev.type === 'milk') {
+    rows += `<div class="form-item"><label>喝奶量 (ml)</label><input type="number" id="e-amount" inputmode="decimal" value="${ev.amount}"></div>`;
+  } else if (ev.type === 'play') {
+    rows += `<div class="form-item"><label>运动类型</label><select id="e-playtype">${opts(['大运动','玩玩具','练抬头'], ev.playType)}</select></div>`;
+  } else if (ev.type === 'diaper') {
+    rows += `<div class="form-item"><label>尿包内容</label><select id="e-wet" onchange="onEditWetChange()">${opts(['小便','大便'], ev.wet)}</select></div>
+      <div class="form-item" id="e-stool-wrap" style="display:${ev.wet === '大便' ? 'block' : 'none'}"><label>大便状态</label><select id="e-stool">${opts(['黄','绿','黄绿','深绿'], ev.stool)}</select></div>`;
+  }
+  rows += `<button class="save-btn" onclick="saveEdit()">保存修改</button>`;
+  document.getElementById('detail-body').innerHTML = rows;
+}
+
+function onEditWetChange() {
+  document.getElementById('e-stool-wrap').style.display =
+    document.getElementById('e-wet').value === '大便' ? 'block' : 'none';
+}
+
+async function saveEdit() {
+  const patch = {
+    start: document.getElementById('e-start').value,
+    end: document.getElementById('e-end').value,
+  };
+  if (!patch.start || !patch.end) { alert('请填写开始和结束时间'); return; }
+  if (currentEvent.type === 'milk') {
+    const v = document.getElementById('e-amount').value;
+    if (!v) { alert('请填写喝奶量'); return; }
+    patch.amount = Number(v);
+  } else if (currentEvent.type === 'play') {
+    patch.playType = document.getElementById('e-playtype').value;
+  } else if (currentEvent.type === 'diaper') {
+    patch.wet = document.getElementById('e-wet').value;
+    if (patch.wet === '大便') {
+      patch.stool = document.getElementById('e-stool').value;
+    } else {
+      patch.stool = null;
+    }
+  }
+  await fetch(DB_URL + '/' + currentEventId, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(patch),
+  });
+  await openDetail(currentEventId);
 }
 
 async function deleteEvent() {
@@ -289,7 +345,6 @@ async function deleteEvent() {
   await delFromDB(currentEventId);
   if (currentDay) await openDay(currentDay);
 }
-
 renderCal();
 </script>
 </body>

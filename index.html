@@ -257,7 +257,7 @@ async function renderCal() {
   }
   document.getElementById('cal-grid').innerHTML = html;
 }
-async async function renderMilkChart() {
+async function renderMilkChart() {
   const db = await loadDB();
   const totals = {};
   db.forEach(e => {
@@ -298,7 +298,7 @@ async async function renderMilkChart() {
   document.getElementById('milk-chart').innerHTML = svg;
 }
 
-function openDay(k) {
+async function openDay(k) {
   currentDay = k;
   document.getElementById('day-title').textContent = k;
   document.getElementById('day-summary').innerHTML = '<div class="summary-row"><span>加载中…</span></div>';

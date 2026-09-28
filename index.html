@@ -282,7 +282,7 @@ async function openDetail(id) {
     rows += `<div class="detail-item"><span>尿包内容</span><span>${ev.wet}</span></div>`;
     if (ev.stool) rows += `<div class="detail-item"><span>大便状态</span><span>${ev.stool}</span></div>`;
   }
-  rows += `<button class="save-btn" style="background:#888" onclick="editEvent()">✏️ 编辑</button>`;
+  rows += `<button class="save-btn" onclick="editEvent()">✏️ 编辑</button>`;
   document.getElementById('detail-body').innerHTML = rows;
   showPage('page-detail');
 }

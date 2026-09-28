@@ -33,7 +33,8 @@ h2 { text-align: center; margin-bottom: 16px; font-size: 20px; }
 .cal-head button { border: none; background: #fff; border-radius: 8px; padding: 8px 14px; font-size: 16px; cursor: pointer; }
 .summary-row { display: flex; justify-content: space-between; background: #fff; border-radius: 10px; padding: 12px 14px; margin-bottom: 8px; font-size: 15px; }
 .summary-row b { color: #4a6cf7; }
-.ev-row { display: grid; grid-template-columns: 1fr 1fr 1.2fr; background: #fff; border-radius: 10px; padding: 12px 10px; margin-bottom: 8px; font-size: 13px; cursor: pointer; align-items: center; }
+.ev-row { display: grid; grid-template-columns: 1fr 1fr 1.2fr auto; background: #fff; border-radius: 10px; padding: 12px 10px; margin-bottom: 8px; font-size: 13px; cursor: pointer; align-items: center; gap: 4px; }
+.ev-row .del { background: none; border: none; color: #e0427f; font-size: 16px; padding: 2px 6px; }
 .ev-row .type { font-weight: bold; color: #4a6cf7; }
 .detail-item { background: #fff; border-radius: 10px; padding: 12px 14px; margin-bottom: 8px; display: flex; justify-content: space-between; font-size: 15px; }
 .detail-item span:first-child { color: #888; }
@@ -277,8 +278,15 @@ async function openDay(k) {
   document.getElementById('day-list').innerHTML = db.map(e =>
     `<div class="ev-row" onclick="openDetail(${e.id})">
       <span>${fmt(e.start).slice(11)}</span><span>${fmt(e.end).slice(11)}</span>
-      <span class="type">${TYPES[e.type].name}</span></div>`).join('') ||
+      <span class="type">${TYPES[e.type].name}</span>
+      <button class="del" onclick="event.stopPropagation();deleteFromList(${e.id})">🗑</button></div>`).join('') ||
     '<div class="summary-row"><span>暂无事件</span></div>';
+}
+
+async function deleteFromList(id) {
+  if (!confirm('确定删除这条记录吗？')) return;
+  await delFromDB(id);
+  if (currentDay) await openDay(currentDay);
 }
 
 async function openDetail(id) {

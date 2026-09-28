@@ -169,7 +169,7 @@ function openForm(type) {
   let extra = '';
   if (type === 'milk') {
     extra = `<div class="form-item"><label>喝奶量 (ml)</label><input type="number" id="f-amount" inputmode="decimal" value="120" placeholder="例如 120"></div>
-      <div class="form-item"><label><input type="checkbox" id="f-also-diaper" style="width:auto;margin-right:8px;transform:scale(1.2)">同时记录换尿包（小便，时间：喝奶前 5 分钟）</label></div>`;
+      <div class="form-item"><label><input type="checkbox" id="f-also-diaper" checked style="width:auto;margin-right:8px;transform:scale(1.2)">同时记录换尿包（小便，时间：喝奶前 5 分钟）</label></div>`;
   } else if (type === 'play') {
     extra = `<div class="form-item"><label>运动类型</label><select id="f-playtype">
       <option>大运动</option><option>玩玩具</option><option>练抬头</option></select></div>`;
